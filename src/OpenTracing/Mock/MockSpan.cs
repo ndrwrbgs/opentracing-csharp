@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using OpenTracing.Tag;
@@ -22,9 +22,9 @@ namespace OpenTracing.Mock
         /// <summary>
         /// A simple-as-possible (consecutive for repeatability) id generator.
         /// </summary>
-        private static long NextId()
+        private static string NextId()
         {
-            return Interlocked.Increment(ref _nextIdCounter);
+            return Interlocked.Increment(ref _nextIdCounter).ToString(CultureInfo.InvariantCulture);
         }
 
         private readonly object _lock = new object();
@@ -39,12 +39,12 @@ namespace OpenTracing.Mock
         private readonly List<Exception> _errors = new List<Exception>();
 
         /// <summary>
-        /// The spanId of the span's first <see cref="References.ChildOf"/> reference, or the first reference of any type,
-        /// or 0 if no reference exists.
+        /// The spanId of the span's first <see cref="OpenTracing.References.ChildOf"/> reference, or the first reference of any type,
+        /// or null if no reference exists.
         /// </summary>
         /// <seealso cref="MockSpanContext.SpanId"/>
         /// <seealso cref="MockSpan.References"/>
-        public long ParentId { get; }
+        public string ParentId { get; }
 
         public DateTimeOffset StartTimestamp { get; }
 
@@ -121,7 +121,7 @@ namespace OpenTracing.Mock
             {
                 // we are a root span
                 _context = new MockSpanContext(NextId(), NextId(), new Dictionary<string, string>());
-                ParentId = 0;
+                ParentId = null;
             }
             else
             {
@@ -192,12 +192,12 @@ namespace OpenTracing.Mock
             }
         }
 
-        public ISpan Log(IDictionary<string, object> fields)
+        public ISpan Log(IEnumerable<KeyValuePair<string, object>> fields)
         {
             return Log(DateTimeOffset.UtcNow, fields);
         }
 
-        public ISpan Log(DateTimeOffset timestamp, IDictionary<string, object> fields)
+        public ISpan Log(DateTimeOffset timestamp, IEnumerable<KeyValuePair<string, object>> fields)
         {
             lock (_lock)
             {
@@ -305,10 +305,16 @@ namespace OpenTracing.Mock
 
             public IReadOnlyDictionary<string, object> Fields { get; }
 
-            public LogEntry(DateTimeOffset timestamp, IDictionary<string, object> fields)
+            public LogEntry(DateTimeOffset timestamp, IEnumerable<KeyValuePair<string, object>> fields)
             {
                 Timestamp = timestamp;
-                Fields = new ReadOnlyDictionary<string, object>(fields);
+
+                var fieldsDictionary = new Dictionary<string, object>();
+                foreach (var kvp in fields)
+                {
+                    fieldsDictionary[kvp.Key] = kvp.Value;
+                }
+                Fields = fieldsDictionary;
             }
         }
 

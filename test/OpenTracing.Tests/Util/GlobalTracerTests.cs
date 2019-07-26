@@ -62,6 +62,14 @@ namespace OpenTracing.Tests.Util
         }
 
         [Fact]
+        public void Registering_NoopTracer_indicates_tracer_has_been_registered()
+        {
+            Assert.False(GlobalTracer.IsRegistered());
+            GlobalTracer.Register(NoopTracerFactory.Create());
+            Assert.True(GlobalTracer.IsRegistered());
+        }
+
+        [Fact]
         public void NoopTracer_is_set_by_default()
         {
             ISpanBuilder spanBuilder = GlobalTracer.Instance.BuildSpan("my-operation");
@@ -117,6 +125,20 @@ namespace OpenTracing.Tests.Util
             GlobalTracer.Register(Substitute.For<ITracer>());
 
             Assert.True(GlobalTracer.IsRegistered());
+        }
+
+        [Fact]
+        public void RegisterIfAbsent_called_multiple_times_does_not_throw_exception()
+        {
+            Assert.False(GlobalTracer.IsRegistered());
+
+            for (var i = 0; i < 10; i++)
+            {
+                var tracer = Substitute.For<ITracer>();
+                GlobalTracer.RegisterIfAbsent(tracer);                
+
+                Assert.True(GlobalTracer.IsRegistered());
+            }
         }
     }
 }
